@@ -21,12 +21,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.mediacameraapp.camera.CameraManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun PhotoScreen(
+    cameraManager: CameraManager,
     onOpenVideo: () -> Unit,
     onOpenGallery: () -> Unit
 ) {
@@ -37,11 +39,7 @@ fun PhotoScreen(
     var cameraSelector by remember { mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA) }
 
     val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-
-    val cameraManager = remember {
-        CameraManager(context, lifecycleOwner)
-    }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var hasPermissions by remember { mutableStateOf(false) }
 
@@ -71,26 +69,28 @@ fun PhotoScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        AndroidView(
-            factory = {
-                PreviewView(it).apply {
-                    scaleType = PreviewView.ScaleType.FILL_CENTER
-                }
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, _, zoom, _ ->
-                        cameraManager.setZoom(zoom)
+        if (hasPermissions) {
+            AndroidView(
+                factory = {
+                    PreviewView(it).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
                     }
                 },
-            update = { previewView ->
-                cameraManager.startCamera(
-                    previewView = previewView,
-                    cameraSelector = cameraSelector
-                )
-            }
-        )
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, _, zoom, _ ->
+                            cameraManager.setZoom(zoom)
+                        }
+                    },
+                update = { previewView ->
+                    cameraManager.startPhotoCamera(
+                        previewView = previewView,
+                        cameraSelector = cameraSelector
+                    )
+                }
+            )
+        }
 
         IconButton(
             onClick = {
@@ -160,4 +160,3 @@ fun PhotoScreen(
         }
     }
 }
-

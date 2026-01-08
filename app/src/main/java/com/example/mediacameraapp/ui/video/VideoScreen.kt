@@ -6,7 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
@@ -17,20 +17,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.mediacameraapp.camera.CameraManager
 
 
 @Composable
 fun VideoScreen(
+    cameraManager: CameraManager,
     onBack: () -> Unit
 ) {
 
     val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-
-    val cameraManager = remember {
-        CameraManager(context, lifecycleOwner)
-    }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var hasPermissions by remember { mutableStateOf(false) }
 
@@ -51,30 +49,45 @@ fun VideoScreen(
         permissionLauncher.launch(permissions.toTypedArray())
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraManager.stopVideoRecording()
+        }
+    }
+
     var isRecording by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        AndroidView(
-            factory = {
-                PreviewView(it).apply {
-                    scaleType = PreviewView.ScaleType.FILL_CENTER
+        if (hasPermissions) {
+            AndroidView(
+                factory = {
+                    PreviewView(it).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+                update = { previewView ->
+                    cameraManager.startVideoCamera(previewView)
                 }
-            },
-            modifier = Modifier.fillMaxSize(),
-            update = { previewView ->
-                cameraManager.startCamera(previewView)
-            }
-        )
+            )
+        }
 
         IconButton(
-            onClick = onBack,
+            onClick = {
+                // stop recording if active before navigating back
+                if (isRecording) {
+                    cameraManager.stopVideoRecording()
+                    isRecording = false
+                }
+                onBack()
+            },
             modifier = Modifier
                 .padding(16.dp)
                 .align(Alignment.TopStart)
         ) {
             Icon(
-                imageVector = Icons.Filled.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Назад",
                 tint = Color.White
             )

@@ -1,47 +1,37 @@
 package com.example.mediacameraapp.camera
 
+import android.content.ContentValues
 import android.content.Context
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
+import android.provider.MediaStore
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.*
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import android.content.ContentValues
-import android.provider.MediaStore
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
 import java.text.SimpleDateFormat
 import java.util.Locale
-import androidx.camera.core.Camera
-import androidx.camera.video.*
 
 class CameraManager(
     private val context: Context,
-    private val lifecycleOwner: LifecycleOwner,
-    private var imageCapture: ImageCapture? = null,
-    private var camera: Camera? = null,
-    private var videoCapture: VideoCapture<Recorder>? = null,
-    private var recording: Recording? = null
-
+    private val lifecycleOwner: LifecycleOwner
 ) {
 
     private var cameraProvider: ProcessCameraProvider? = null
+    private var camera: Camera? = null
 
-    fun startCamera(
+    private var imageCapture: ImageCapture? = null
+
+    private var videoCapture: VideoCapture<Recorder>? = null
+    private var recording: Recording? = null
+
+    fun startPhotoCamera(
         previewView: PreviewView,
         cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     ) {
-        val recorder = Recorder.Builder()
-            .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
-            .build()
-
-        videoCapture = VideoCapture.withOutput(recorder)
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
-
             cameraProvider = cameraProviderFuture.get()
 
             val preview = Preview.Builder().build().apply {
@@ -58,16 +48,10 @@ class CameraManager(
                 lifecycleOwner,
                 cameraSelector,
                 preview,
-                imageCapture,
-                videoCapture
+                imageCapture
             )
 
         }, ContextCompat.getMainExecutor(context))
-    }
-
-
-    fun stopCamera() {
-        cameraProvider?.unbindAll()
     }
 
     fun takePhoto(
@@ -78,8 +62,7 @@ class CameraManager(
 
         val name = SimpleDateFormat(
             "yyyy-MM-dd_HH-mm-ss",
-//            Locale.US
-            Locale.getDefault() //думаю на локалке так оставить
+            Locale.getDefault()
         ).format(System.currentTimeMillis())
 
         val contentValues = ContentValues().apply {
@@ -91,13 +74,11 @@ class CameraManager(
             )
         }
 
-        val outputOptions = ImageCapture.OutputFileOptions
-            .Builder(
-                context.contentResolver,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues
-            )
-            .build()
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(
+            context.contentResolver,
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        ).build()
 
         imageCapture.takePicture(
             outputOptions,
@@ -117,20 +98,35 @@ class CameraManager(
         )
     }
 
-    fun setZoom(scaleFactor: Float) {
-        val camera = camera ?: return
+    fun startVideoCamera(
+        previewView: PreviewView,
+        cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    ) {
+        val recorder = Recorder.Builder()
+            .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
+            .build()
 
-        val zoomState = camera.cameraInfo.zoomState.value ?: return
+        videoCapture = VideoCapture.withOutput(recorder)
 
-        val currentZoom = zoomState.zoomRatio
-        val newZoom = currentZoom * scaleFactor
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
-        val clampedZoom = newZoom.coerceIn(
-            zoomState.minZoomRatio,
-            zoomState.maxZoomRatio
-        )
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
 
-        camera.cameraControl.setZoomRatio(clampedZoom)
+            val preview = Preview.Builder().build().apply {
+                setSurfaceProvider(previewView.surfaceProvider)
+            }
+
+            cameraProvider?.unbindAll()
+
+            camera = cameraProvider?.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                preview,
+                videoCapture
+            )
+
+        }, ContextCompat.getMainExecutor(context))
     }
 
     fun startVideoRecording(
@@ -146,14 +142,16 @@ class CameraManager(
         val contentValues = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, name)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/MediaCameraApp")
+            put(
+                MediaStore.Video.Media.RELATIVE_PATH,
+                "Movies/MediaCameraApp"
+            )
         }
 
-        val outputOptions = MediaStoreOutputOptions
-            .Builder(
-                context.contentResolver,
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            )
+        val outputOptions = MediaStoreOutputOptions.Builder(
+            context.contentResolver,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        )
             .setContentValues(contentValues)
             .build()
 
@@ -172,4 +170,25 @@ class CameraManager(
         recording = null
     }
 
+    fun setZoom(scaleFactor: Float) {
+        val camera = camera ?: return
+        val zoomState = camera.cameraInfo.zoomState.value ?: return
+
+        val currentZoom = zoomState.zoomRatio
+        val newZoom = currentZoom * scaleFactor
+
+        val clampedZoom = newZoom.coerceIn(
+            zoomState.minZoomRatio,
+            zoomState.maxZoomRatio
+        )
+
+        camera.cameraControl.setZoomRatio(clampedZoom)
+    }
+
+    fun stopCamera() {
+        cameraProvider?.unbindAll()
+        camera = null
+        imageCapture = null
+        videoCapture = null
+    }
 }

@@ -20,10 +20,18 @@ import com.example.mediacameraapp.data.media.MediaItem
 @Composable
 fun GalleryScreen(
     onOpenPhoto: () -> Unit,
-    onOpenMedia: (MediaItem) -> Unit,
-    viewModel: GalleryViewModel = viewModel()
+    onOpenMedia: (MediaItem) -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val viewModel: GalleryViewModel = viewModel(
+        factory = GalleryViewModelFactory(
+            contentResolver = context.contentResolver
+        )
+    )
+
     val mediaItems by viewModel.mediaItems.collectAsState()
+
 
     LaunchedEffect(Unit) {
         viewModel.loadMedia()
