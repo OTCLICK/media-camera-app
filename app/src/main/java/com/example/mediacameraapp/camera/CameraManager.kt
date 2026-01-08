@@ -1,7 +1,10 @@
 package com.example.mediacameraapp.camera
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.MediaStore
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -9,6 +12,10 @@ import androidx.camera.video.*
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import com.example.mediacameraapp.data.media.MediaItem
+import com.example.mediacameraapp.data.media.MediaStoreNotifier
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -55,7 +62,7 @@ class CameraManager(
     }
 
     fun takePhoto(
-        onSuccess: () -> Unit,
+        onSuccess: (Uri) -> Unit,
         onError: (Exception) -> Unit
     ) {
         val imageCapture = imageCapture ?: return
@@ -88,7 +95,25 @@ class CameraManager(
                 override fun onImageSaved(
                     outputFileResults: ImageCapture.OutputFileResults
                 ) {
-                    onSuccess()
+                    val savedUri = outputFileResults.savedUri ?: run {
+                        val id = outputFileResults.savedUri?.lastPathSegment
+                        null
+                    }
+
+                    val uriToSend = savedUri ?: Uri.EMPTY
+                    try {
+                        if (uriToSend != Uri.EMPTY) {
+                            lifecycleOwner.lifecycleScope.launch {
+                                try {
+                                    MediaStoreNotifier.emit(MediaItem(uriToSend, isVideo = false))
+                                } catch (_: Exception) {
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                    }
+
+                    onSuccess(uriToSend)
                 }
 
                 override fun onError(exception: ImageCaptureException) {
@@ -130,7 +155,8 @@ class CameraManager(
     }
 
     fun startVideoRecording(
-        onError: (Throwable) -> Unit
+        onError: (Throwable) -> Unit,
+        onSaved: ((Uri) -> Unit)? = null
     ) {
         val videoCapture = videoCapture ?: return
 
@@ -155,14 +181,54 @@ class CameraManager(
             .setContentValues(contentValues)
             .build()
 
-        recording = videoCapture.output
-            .prepareRecording(context, outputOptions)
-            .withAudioEnabled()
-            .start(ContextCompat.getMainExecutor(context)) { event ->
-                if (event is VideoRecordEvent.Finalize && event.hasError()) {
-                    onError(event.cause ?: RuntimeException("Video recording error"))
+        try {
+            val pendingRecording = videoCapture.output
+                .prepareRecording(context, outputOptions)
+
+            val canRecordAudio = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+
+            val recordingBuilder = try {
+                if (canRecordAudio) {
+                    pendingRecording.withAudioEnabled()
+                } else {
+                    pendingRecording
+                }
+            } catch (se: SecurityException) {
+                pendingRecording
+            }
+
+            recording = recordingBuilder.start(ContextCompat.getMainExecutor(context)) { event ->
+                when (event) {
+                    is VideoRecordEvent.Finalize -> {
+                        if (event.hasError()) {
+                            onError(event.cause ?: RuntimeException("Video recording error"))
+                        } else {
+                            val savedUri: Uri? = event.outputResults.outputUri
+                            if (savedUri != null) {
+                                try {
+                                    lifecycleOwner.lifecycleScope.launch {
+                                        try {
+                                            MediaStoreNotifier.emit(MediaItem(savedUri, isVideo = true))
+                                        } catch (_: Exception) {
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                }
+                                onSaved?.invoke(savedUri)
+                            }
+                        }
+                    }
+                    else -> {}
                 }
             }
+        } catch (se: SecurityException) {
+            onError(se)
+        } catch (t: Throwable) {
+            onError(t)
+        }
     }
 
     fun stopVideoRecording() {
@@ -183,6 +249,20 @@ class CameraManager(
         )
 
         camera.cameraControl.setZoomRatio(clampedZoom)
+    }
+
+    fun focusOnPoint(previewView: PreviewView, x: Float, y: Float) {
+        val cam = camera ?: return
+        try {
+            val factory = previewView.meteringPointFactory
+            val point = factory.createPoint(x, y)
+            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AE or FocusMeteringAction.FLAG_AF)
+                .setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+            cam.cameraControl.startFocusAndMetering(action)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun stopCamera() {
