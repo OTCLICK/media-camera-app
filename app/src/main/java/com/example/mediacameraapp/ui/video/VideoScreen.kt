@@ -1,7 +1,10 @@
+// kotlin
 package com.example.mediacameraapp.ui.video
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.net.Uri
+import android.os.Build
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -11,12 +14,9 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,18 +27,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.mediacameraapp.camera.CameraManager
+import com.example.mediacameraapp.navigation.CameraBottomBar
+import com.example.mediacameraapp.navigation.CameraMode
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
-
-@SuppressLint("ClickableViewAccessibility")
+@SuppressLint("ClickableViewAccessibility", "DefaultLocale")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoScreen(
     cameraManager: CameraManager,
-    onBack: () -> Unit
+    onOpenPhoto: () -> Unit,
+    onOpenGallery: () -> Unit
 ) {
-
+    val coroutineScope = rememberCoroutineScope()
     var cameraSelector by remember { mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA) }
+    var isRecording by remember { mutableStateOf(false) }
+    var recordSeconds by remember { mutableStateOf(0L) }
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -52,170 +58,159 @@ fun VideoScreen(
     }
 
     val permissions = remember {
-        listOf(
-            Manifest.permission.CAMERA,
-            Manifest.permission.RECORD_AUDIO
-        )
+        mutableListOf(
+            Manifest.permission.CAMERA
+        ).apply {
+            add(Manifest.permission.RECORD_AUDIO)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.READ_MEDIA_IMAGES)
+                add(Manifest.permission.READ_MEDIA_VIDEO)
+            } else {
+                add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
         permissionLauncher.launch(permissions.toTypedArray())
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            cameraManager.stopVideoRecording()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        bottomBar = {
+            CameraBottomBar(
+                currentMode = CameraMode.VIDEO,
+                onPhotoClick = onOpenPhoto,
+                onVideoClick = { /* already here */ },
+                onGalleryClick = onOpenGallery
+            )
         }
-    }
+    ) { padding ->
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
 
-    var isRecording by remember { mutableStateOf(false) }
+            if (hasPermissions) {
+                AndroidView(
+                    factory = { ctx ->
+                        val previewView = PreviewView(ctx).apply {
+                            scaleType = PreviewView.ScaleType.FILL_CENTER
+                        }
 
-    var elapsedMillis by remember { mutableStateOf(0L) }
+                        val scaleDetector = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                                cameraManager.setZoom(detector.scaleFactor)
+                                return true
+                            }
+                        })
 
-    LaunchedEffect(isRecording) {
-        if (isRecording) {
-            val startTime = System.currentTimeMillis()
-            while (isActive) {
-                elapsedMillis = System.currentTimeMillis() - startTime
-                delay(250L)
+                        val gestureDetector = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
+                            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                                cameraManager.focusOnPoint(previewView, e.x, e.y)
+                                return true
+                            }
+                        })
+
+                        previewView.setOnTouchListener { _, event ->
+                            var handled = scaleDetector.onTouchEvent(event)
+                            handled = gestureDetector.onTouchEvent(event) || handled
+                            true
+                        }
+
+                        previewView
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    update = { previewView ->
+                        cameraManager.startVideoCamera(
+                            previewView = previewView,
+                            cameraSelector = cameraSelector
+                        )
+                    }
+                )
             }
-        } else {
-            elapsedMillis = 0L
-        }
-    }
 
-    @SuppressLint("DefaultLocale")
-    fun formatDuration(ms: Long): String {
-        val totalSeconds = ms / 1000
-        val minutes = totalSeconds / 60
-        val seconds = totalSeconds % 60
-        return String.format("%02d:%02d", minutes, seconds)
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        if (hasPermissions) {
-            AndroidView(
-                factory = { ctx ->
-                    val previewView = PreviewView(ctx).apply {
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                    }
-
-                    val scaleDetector = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                        override fun onScale(detector: ScaleGestureDetector): Boolean {
-                            cameraManager.setZoom(detector.scaleFactor)
-                            return true
+            IconButton(
+                onClick = {
+                    cameraSelector =
+                        if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                            CameraSelector.DEFAULT_FRONT_CAMERA
+                        } else {
+                            CameraSelector.DEFAULT_BACK_CAMERA
                         }
-                    })
-
-                    val gestureDetector = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
-                        override fun onSingleTapUp(e: MotionEvent): Boolean {
-                            cameraManager.focusOnPoint(previewView, e.x, e.y)
-                            return true
-                        }
-                    })
-
-                    previewView.setOnTouchListener { _, event ->
-                        var handled = scaleDetector.onTouchEvent(event)
-                        handled = gestureDetector.onTouchEvent(event) || handled
-                        true
-                    }
-
-                    previewView
                 },
-                modifier = Modifier.fillMaxSize(),
-                update = { previewView ->
-                    cameraManager.startVideoCamera(previewView, cameraSelector)
-                }
-            )
-        }
-
-        IconButton(
-            onClick = {
-                if (isRecording) {
-                    cameraManager.stopVideoRecording()
-                    isRecording = false
-                }
-                onBack()
-            },
-            modifier = Modifier
-                .padding(16.dp)
-                .align(Alignment.TopStart)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.ArrowBack,
-                contentDescription = "Назад",
-                tint = Color.White
-            )
-        }
-
-        IconButton(
-            onClick = {
-                cameraSelector =
-                    if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) CameraSelector.DEFAULT_FRONT_CAMERA
-                    else CameraSelector.DEFAULT_BACK_CAMERA
-            },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Cameraswitch,
-                contentDescription = "Переключить камеру",
-                tint = Color.White
-            )
-        }
-
-        if (isRecording) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(Color.Red, shape = CircleShape)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = formatDuration(elapsedMillis),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium
+                Icon(
+                    imageVector = Icons.Filled.Cameraswitch,
+                    contentDescription = "Switch camera",
+                    tint = Color.White
                 )
             }
-        }
 
-        FloatingActionButton(
-            onClick = {
-                if (isRecording) {
-                    cameraManager.stopVideoRecording()
-                } else {
-                    cameraManager.startVideoRecording(
-                        onError = { throwable ->
-                            // If recording fails, stop timer/UI
-                            throwable.printStackTrace()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                FloatingActionButton(
+                    onClick = {
+                        if (!isRecording) {
+                            isRecording = true
+                            recordSeconds = 0L
+                            coroutineScope.launch {
+                                // start timer
+                                while (isRecording) {
+                                    delay(1000)
+                                    recordSeconds++
+                                }
+                            }
+
+                            cameraManager.startVideoRecording(
+                                onError = { throwable ->
+                                    throwable.printStackTrace()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Error during recording")
+                                    }
+                                    isRecording = false
+                                },
+                                onSaved = { uri: Uri ->
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Video saved: $uri")
+                                    }
+                                }
+                            )
+                        } else {
+                            cameraManager.stopVideoRecording()
+                            isRecording = false
                         }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Videocam,
+                        contentDescription = if (isRecording) "Stop recording" else "Start recording"
                     )
                 }
-                isRecording = !isRecording
-            },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(32.dp),
-            containerColor = if (isRecording) Color.Red else MaterialTheme.colorScheme.primary
-        ) {
-            Icon(
-                imageVector = if (isRecording)
-                    Icons.Filled.Stop
-                else
-                    Icons.Filled.FiberManualRecord,
-                contentDescription = "Запись видео"
-            )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (isRecording) {
+                    Text(
+                        text = String.format(
+                            "%02d:%02d",
+                            TimeUnit.SECONDS.toMinutes(recordSeconds),
+                            recordSeconds % 60
+                        ),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
         }
     }
 }

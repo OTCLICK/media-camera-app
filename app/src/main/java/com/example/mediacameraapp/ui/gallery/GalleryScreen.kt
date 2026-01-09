@@ -1,6 +1,7 @@
 package com.example.mediacameraapp.ui.gallery
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -8,10 +9,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,7 +51,8 @@ fun GalleryScreen(
             contentPadding = PaddingValues(4.dp)
         ) {
             items(mediaItems) { item ->
-                MediaGridItem(item,
+                MediaGridItem(
+                    item,
                     onClick = { onOpenMedia(item) },
                     onLongPress = {
                         showDeleteDialog = true to item
@@ -118,6 +122,19 @@ fun MediaGridItem(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+
+        if (item.isVideo) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(36.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), shape = MaterialTheme.shapes.large)
+                    .padding(6.dp)
+            )
+        }
 
         if (item.isVideo || item.dateAdded != null) {
             Column(

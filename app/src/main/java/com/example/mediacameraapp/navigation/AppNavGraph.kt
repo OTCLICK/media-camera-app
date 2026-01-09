@@ -49,8 +49,9 @@ fun AppNavGraph() {
 
         composable(Screen.Video.route) {
             VideoScreen(
-                cameraManager,
-                onBack = { navController.popBackStack() }
+                cameraManager = cameraManager,
+                onOpenPhoto = { navController.navigate(Screen.Photo.route) },
+                onOpenGallery = { navController.navigate(Screen.Gallery.route) }
             )
         }
 

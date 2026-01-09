@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.mediacameraapp.camera.CameraManager
+import com.example.mediacameraapp.navigation.CameraBottomBar
+import com.example.mediacameraapp.navigation.CameraMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -75,8 +77,14 @@ fun PhotoScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
+        bottomBar = {
+            CameraBottomBar(
+                currentMode = CameraMode.PHOTO,
+                onPhotoClick = { },
+                onVideoClick = onOpenVideo,
+                onGalleryClick = onOpenGallery
+            )
+        }    ) { padding ->
 
         Box(modifier = Modifier
             .fillMaxSize()
@@ -181,13 +189,6 @@ fun PhotoScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Button(onClick = onOpenVideo) {
-                    Text("Видео")
-                }
-
-                Button(onClick = onOpenGallery) {
-                    Text("Галерея")
-                }
             }
 
             if (showFlash) {
