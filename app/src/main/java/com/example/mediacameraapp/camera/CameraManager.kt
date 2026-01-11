@@ -69,7 +69,7 @@ class CameraManager(
 
         val name = SimpleDateFormat(
             "yyyy-MM-dd_HH-mm-ss",
-            Locale.getDefault()
+            Locale.getDefault() //для локалки наверн лучше так оставить
         ).format(System.currentTimeMillis())
 
         val contentValues = ContentValues().apply {
@@ -211,7 +211,12 @@ class CameraManager(
                                 try {
                                     lifecycleOwner.lifecycleScope.launch {
                                         try {
-                                            MediaStoreNotifier.emit(MediaItem(savedUri, isVideo = true))
+                                            MediaStoreNotifier.emit(
+                                                MediaItem(
+                                                    savedUri,
+                                                    isVideo = true
+                                                )
+                                            )
                                         } catch (_: Exception) {
                                         }
                                     }
@@ -221,6 +226,7 @@ class CameraManager(
                             }
                         }
                     }
+
                     else -> {}
                 }
             }
@@ -256,7 +262,10 @@ class CameraManager(
         try {
             val factory = previewView.meteringPointFactory
             val point = factory.createPoint(x, y)
-            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AE or FocusMeteringAction.FLAG_AF)
+            val action = FocusMeteringAction.Builder(
+                point,
+                FocusMeteringAction.FLAG_AE or FocusMeteringAction.FLAG_AF
+            )
                 .setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
                 .build()
             cam.cameraControl.startFocusAndMetering(action)

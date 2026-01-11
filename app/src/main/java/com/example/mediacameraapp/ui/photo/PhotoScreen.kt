@@ -45,8 +45,8 @@ fun PhotoScreen(
 
     var cameraSelector by remember { mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA) }
 
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+//    val context = LocalContext.current
+//    val lifecycleOwner = LocalLifecycleOwner.current
 
     var hasPermissions by remember { mutableStateOf(false) }
 
@@ -84,11 +84,13 @@ fun PhotoScreen(
                 onVideoClick = onOpenVideo,
                 onGalleryClick = onOpenGallery
             )
-        }    ) { padding ->
+        }) { padding ->
 
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
 
             if (hasPermissions) {
                 AndroidView(
@@ -97,19 +99,23 @@ fun PhotoScreen(
                             scaleType = PreviewView.ScaleType.FILL_CENTER
                         }
 
-                        val scaleDetector = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                                cameraManager.setZoom(detector.scaleFactor)
-                                return true
-                            }
-                        })
+                        val scaleDetector = ScaleGestureDetector(
+                            ctx,
+                            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                                    cameraManager.setZoom(detector.scaleFactor)
+                                    return true
+                                }
+                            })
 
-                        val gestureDetector = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
-                            override fun onSingleTapUp(e: MotionEvent): Boolean {
-                                cameraManager.focusOnPoint(previewView, e.x, e.y)
-                                return true
-                            }
-                        })
+                        val gestureDetector = GestureDetector(
+                            ctx,
+                            object : GestureDetector.SimpleOnGestureListener() {
+                                override fun onSingleTapUp(e: MotionEvent): Boolean {
+                                    cameraManager.focusOnPoint(previewView, e.x, e.y)
+                                    return true
+                                }
+                            })
 
                         previewView.setOnTouchListener { _, event ->
                             var handled = scaleDetector.onTouchEvent(event)

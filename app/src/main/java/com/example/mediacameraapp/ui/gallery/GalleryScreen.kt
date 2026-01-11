@@ -34,8 +34,7 @@ import com.example.mediacameraapp.utils.getVideoThumbnail
 fun GalleryScreen(
     onOpenPhoto: () -> Unit,
     onOpenMedia: (Int) -> Unit
-)
- {
+) {
     val context = LocalContext.current
 
     val viewModel: GalleryViewModel = viewModel(
@@ -113,7 +112,7 @@ fun GalleryScreen(
                         }
                     },
                     title = { Text("Удалить этот файл?") },
-                    text = { Text("Вы уверены, что хотите удалить выбранный медиафайл? Это действие необратимо.") }
+                    text = { Text("Вы уверены, что хотите удалить выбранный медиафайл?") }
                 )
             }
         }
@@ -172,7 +171,7 @@ fun MediaGridItem(
             ) {
                 item.dateAdded?.let { date ->
                     val formatted = DateFormat.format("dd.MM.yyyy HH:mm", date * 1000L).toString()
-                    Text(text = formatted, color = androidx.compose.ui.graphics.Color.White)
+                    Text(text = formatted, color = Color.White)
                 }
             }
         }

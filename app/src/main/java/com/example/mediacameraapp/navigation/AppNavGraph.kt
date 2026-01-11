@@ -67,8 +67,6 @@ fun AppNavGraph() {
             )
         }
 
-
-
         composable(
             route = Screen.MediaViewer.route,
             arguments = listOf(
@@ -83,7 +81,6 @@ fun AppNavGraph() {
                 onBack = { navController.popBackStack() }
             )
         }
-
 
     }
 }

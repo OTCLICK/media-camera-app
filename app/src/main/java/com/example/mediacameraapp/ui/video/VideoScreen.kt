@@ -45,8 +45,8 @@ fun VideoScreen(
     var isRecording by remember { mutableStateOf(false) }
     var recordSeconds by remember { mutableStateOf(0L) }
 
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+//    val context = LocalContext.current
+//    val lifecycleOwner = LocalLifecycleOwner.current
 
     var hasPermissions by remember { mutableStateOf(false) }
 
