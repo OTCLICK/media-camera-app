@@ -5,8 +5,14 @@ sealed class Screen(val route: String) {
     object Video : Screen("video")
     object Gallery : Screen("gallery")
 
-    object MediaViewer : Screen("media_viewer/{uri}/{isVideo}") {
-        fun createRoute(uri: String, isVideo: Boolean) =
-            "media_viewer/$uri/$isVideo"
+//    object MediaViewer : Screen("media_viewer/{uri}/{isVideo}") {
+//        fun createRoute(uri: String, isVideo: Boolean) =
+//            "media_viewer/$uri/$isVideo"
+//    }
+
+    object MediaViewer : Screen("media_viewer/{index}") {
+        fun createRoute(index: Int) =
+            "media_viewer/$index"
     }
+
 }

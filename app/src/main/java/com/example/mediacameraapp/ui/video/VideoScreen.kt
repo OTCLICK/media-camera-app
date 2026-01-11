@@ -1,4 +1,3 @@
-// kotlin
 package com.example.mediacameraapp.ui.video
 
 import android.Manifest
@@ -82,14 +81,16 @@ fun VideoScreen(
             CameraBottomBar(
                 currentMode = CameraMode.VIDEO,
                 onPhotoClick = onOpenPhoto,
-                onVideoClick = { /* already here */ },
+                onVideoClick = { },
                 onGalleryClick = onOpenGallery
             )
         }
     ) { padding ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
 
             if (hasPermissions) {
                 AndroidView(
@@ -98,19 +99,23 @@ fun VideoScreen(
                             scaleType = PreviewView.ScaleType.FILL_CENTER
                         }
 
-                        val scaleDetector = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                                cameraManager.setZoom(detector.scaleFactor)
-                                return true
-                            }
-                        })
+                        val scaleDetector = ScaleGestureDetector(
+                            ctx,
+                            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                                    cameraManager.setZoom(detector.scaleFactor)
+                                    return true
+                                }
+                            })
 
-                        val gestureDetector = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
-                            override fun onSingleTapUp(e: MotionEvent): Boolean {
-                                cameraManager.focusOnPoint(previewView, e.x, e.y)
-                                return true
-                            }
-                        })
+                        val gestureDetector = GestureDetector(
+                            ctx,
+                            object : GestureDetector.SimpleOnGestureListener() {
+                                override fun onSingleTapUp(e: MotionEvent): Boolean {
+                                    cameraManager.focusOnPoint(previewView, e.x, e.y)
+                                    return true
+                                }
+                            })
 
                         previewView.setOnTouchListener { _, event ->
                             var handled = scaleDetector.onTouchEvent(event)
@@ -133,15 +138,18 @@ fun VideoScreen(
             IconButton(
                 onClick = {
                     cameraSelector =
-                        if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                        if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA)
                             CameraSelector.DEFAULT_FRONT_CAMERA
-                        } else {
+                        else
                             CameraSelector.DEFAULT_BACK_CAMERA
-                        }
                 },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
+                    .background(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        shape = MaterialTheme.shapes.medium
+                    )
             ) {
                 Icon(
                     imageVector = Icons.Filled.Cameraswitch,
@@ -164,7 +172,6 @@ fun VideoScreen(
                             isRecording = true
                             recordSeconds = 0L
                             coroutineScope.launch {
-                                // start timer
                                 while (isRecording) {
                                     delay(1000)
                                     recordSeconds++

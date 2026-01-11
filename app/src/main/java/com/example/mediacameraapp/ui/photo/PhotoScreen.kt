@@ -133,19 +133,22 @@ fun PhotoScreen(
             IconButton(
                 onClick = {
                     cameraSelector =
-                        if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                        if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA)
                             CameraSelector.DEFAULT_FRONT_CAMERA
-                        } else {
+                        else
                             CameraSelector.DEFAULT_BACK_CAMERA
-                        }
                 },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
+                    .background(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        shape = MaterialTheme.shapes.medium
+                    )
             ) {
                 Icon(
                     imageVector = Icons.Filled.Cameraswitch,
-                    contentDescription = "Переключить камеру",
+                    contentDescription = "Switch camera",
                     tint = Color.White
                 )
             }

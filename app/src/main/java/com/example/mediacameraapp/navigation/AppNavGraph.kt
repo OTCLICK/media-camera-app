@@ -1,6 +1,5 @@
 package com.example.mediacameraapp.navigation
 
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -60,35 +59,31 @@ fun AppNavGraph() {
                 onOpenPhoto = {
                     navController.navigate(Screen.Photo.route)
                 },
-                onOpenMedia = { item ->
+                onOpenMedia = { index ->
                     navController.navigate(
-                        Screen.MediaViewer.createRoute(
-                            uri = Uri.encode(item.uri.toString()),
-                            isVideo = item.isVideo
-                        )
+                        Screen.MediaViewer.createRoute(index)
                     )
                 }
             )
         }
 
 
+
         composable(
             route = Screen.MediaViewer.route,
             arguments = listOf(
-                navArgument("uri") { type = NavType.StringType },
-                navArgument("isVideo") { type = NavType.BoolType }
+                navArgument("index") { type = NavType.IntType }
             )
         ) { backStackEntry ->
 
-            val uri = backStackEntry.arguments?.getString("uri")!!
-            val isVideo = backStackEntry.arguments?.getBoolean("isVideo")!!
+            val index = backStackEntry.arguments!!.getInt("index")
 
             MediaViewerScreen(
-                uri = uri,
-                isVideo = isVideo,
+                startIndex = index,
                 onBack = { navController.popBackStack() }
             )
         }
+
 
     }
 }
