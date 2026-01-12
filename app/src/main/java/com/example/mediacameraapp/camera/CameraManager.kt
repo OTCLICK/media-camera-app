@@ -281,3 +281,276 @@ class CameraManager(
         videoCapture = null
     }
 }
+
+//package com.example.mediacameraapp.camera
+//
+//import android.Manifest
+//import android.content.ContentValues
+//import android.content.Context
+//import android.content.pm.PackageManager
+//import android.net.Uri
+//import android.provider.MediaStore
+//import androidx.camera.core.*
+//import androidx.camera.lifecycle.ProcessCameraProvider
+//import androidx.camera.video.*
+//import androidx.camera.view.PreviewView
+//import androidx.core.content.ContextCompat
+//import androidx.lifecycle.LifecycleOwner
+//import androidx.lifecycle.lifecycleScope
+//import com.example.mediacameraapp.data.media.MediaItem
+//import com.example.mediacameraapp.data.media.MediaStoreNotifier
+//import kotlinx.coroutines.launch
+//import java.text.SimpleDateFormat
+//import java.util.Locale
+//import java.util.concurrent.TimeUnit
+//import android.view.Surface
+//
+//class CameraManager(
+//    private val context: Context,
+//    private val lifecycleOwner: LifecycleOwner
+//) {
+//
+//    private var cameraProvider: ProcessCameraProvider? = null
+//    private var camera: Camera? = null
+//
+//    private var imageCapture: ImageCapture? = null
+//    private var videoCapture: VideoCapture<Recorder>? = null
+//    private var recording: Recording? = null
+//
+//    // ================= PHOTO =================
+//
+//    fun startPhotoCamera(
+//        previewView: PreviewView,
+//        cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+//    ) {
+//        previewView.implementationMode =
+//            PreviewView.ImplementationMode.COMPATIBLE
+//
+//        val rotation = previewView.display?.rotation
+//            ?: Surface.ROTATION_0
+//        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+//
+//        cameraProviderFuture.addListener({
+//            cameraProvider = cameraProviderFuture.get()
+//
+//            val preview = Preview.Builder()
+//                .setTargetRotation(rotation)
+//                .build().apply {
+//                    setSurfaceProvider(previewView.surfaceProvider)
+//                }
+//
+//            imageCapture = ImageCapture.Builder()
+//                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+//                .build()
+//
+//
+//            cameraProvider?.unbindAll()
+//
+//            camera = cameraProvider?.bindToLifecycle(
+//                lifecycleOwner,
+//                cameraSelector,
+//                preview,
+//                imageCapture
+//            )
+//
+//        }, ContextCompat.getMainExecutor(context))
+//    }
+//
+//    fun takePhoto(
+//        onSuccess: (Uri) -> Unit,
+//        onError: (Exception) -> Unit
+//    ) {
+//        val imageCapture = imageCapture ?: return
+//
+//        imageCapture.targetRotation =
+//            (context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager)
+//                .defaultDisplay.rotation
+//
+//        val name = SimpleDateFormat(
+//            "yyyy-MM-dd_HH-mm-ss",
+//            Locale.getDefault()
+//        ).format(System.currentTimeMillis())
+//
+//        val contentValues = ContentValues().apply {
+//            put(MediaStore.Images.Media.DISPLAY_NAME, name)
+//            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+//            put(
+//                MediaStore.Images.Media.RELATIVE_PATH,
+//                "Pictures/MediaCameraApp"
+//            )
+//        }
+//
+//        val outputOptions = ImageCapture.OutputFileOptions.Builder(
+//            context.contentResolver,
+//            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+//            contentValues
+//        ).build()
+//
+//        imageCapture.takePicture(
+//            outputOptions,
+//            ContextCompat.getMainExecutor(context),
+//            object : ImageCapture.OnImageSavedCallback {
+//                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+//                    onSuccess(output.savedUri ?: Uri.EMPTY)
+//                }
+//
+//                override fun onError(exception: ImageCaptureException) {
+//                    onError(exception)
+//                }
+//            }
+//        )
+//    }
+//
+//
+//    // ================= VIDEO =================
+//
+//    fun startVideoCamera(
+//        previewView: PreviewView,
+//        cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+//    ) {
+//        previewView.implementationMode =
+//            PreviewView.ImplementationMode.COMPATIBLE
+//
+//        val rotation = previewView.display?.rotation
+//            ?: Surface.ROTATION_0
+//        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+//
+//        val recorder = Recorder.Builder()
+//            .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
+//            .build()
+//
+//        videoCapture = VideoCapture.Builder(recorder)
+//            .setTargetRotation(rotation)
+//            .build()
+//
+//        cameraProviderFuture.addListener({
+//            cameraProvider = cameraProviderFuture.get()
+//
+//            val preview = Preview.Builder()
+//                .setTargetRotation(rotation)
+//                .build().apply {
+//                    setSurfaceProvider(previewView.surfaceProvider)
+//                }
+//
+//            cameraProvider?.unbindAll()
+//
+//            camera = cameraProvider?.bindToLifecycle(
+//                lifecycleOwner,
+//                cameraSelector,
+//                preview,
+//                videoCapture
+//            )
+//
+//        }, ContextCompat.getMainExecutor(context))
+//    }
+//
+//    fun startVideoRecording(
+//        onError: (Throwable) -> Unit,
+//        onSaved: ((Uri) -> Unit)? = null
+//    ) {
+//        val videoCapture = videoCapture ?: return
+//
+//        val name = SimpleDateFormat(
+//            "yyyy-MM-dd_HH-mm-ss",
+//            Locale.getDefault()
+//        ).format(System.currentTimeMillis())
+//
+//        val contentValues = ContentValues().apply {
+//            put(MediaStore.Video.Media.DISPLAY_NAME, name)
+//            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+//            put(
+//                MediaStore.Video.Media.RELATIVE_PATH,
+//                "Movies/MediaCameraApp"
+//            )
+//        }
+//
+//        val outputOptions = MediaStoreOutputOptions.Builder(
+//            context.contentResolver,
+//            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+//        )
+//            .setContentValues(contentValues)
+//            .build()
+//
+//        videoCapture?.targetRotation =
+//            (context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager)
+//                .defaultDisplay.rotation
+//
+//
+//        try {
+//            var pendingRecording =
+//                videoCapture.output.prepareRecording(context, outputOptions)
+//
+//            if (
+//                ContextCompat.checkSelfPermission(
+//                    context,
+//                    Manifest.permission.RECORD_AUDIO
+//                ) == PackageManager.PERMISSION_GRANTED
+//            ) {
+//                pendingRecording = pendingRecording.withAudioEnabled()
+//            }
+//
+//            recording = pendingRecording.start(
+//                ContextCompat.getMainExecutor(context)
+//            ) { event ->
+//                if (event is VideoRecordEvent.Finalize) {
+//                    if (event.hasError()) {
+//                        onError(event.cause ?: RuntimeException("Video error"))
+//                    } else {
+//                        val uri = event.outputResults.outputUri
+//                        lifecycleOwner.lifecycleScope.launch {
+//                            try {
+//                                MediaStoreNotifier.emit(
+//                                    MediaItem(uri, isVideo = true)
+//                                )
+//                            } catch (_: Exception) {}
+//                        }
+//                        onSaved?.invoke(uri)
+//                    }
+//                }
+//            }
+//        } catch (t: Throwable) {
+//            onError(t)
+//        }
+//    }
+//
+//    fun stopVideoRecording() {
+//        recording?.stop()
+//        recording = null
+//    }
+//
+//    // ================= CONTROLS =================
+//
+//    fun setZoom(scaleFactor: Float) {
+//        val cam = camera ?: return
+//        val zoomState = cam.cameraInfo.zoomState.value ?: return
+//
+//        val newZoom = zoomState.zoomRatio * scaleFactor
+//        cam.cameraControl.setZoomRatio(
+//            newZoom.coerceIn(
+//                zoomState.minZoomRatio,
+//                zoomState.maxZoomRatio
+//            )
+//        )
+//    }
+//
+//    fun focusOnPoint(previewView: PreviewView, x: Float, y: Float) {
+//        val cam = camera ?: return
+//
+//        val point = previewView.meteringPointFactory.createPoint(x, y)
+//        val action = FocusMeteringAction.Builder(
+//            point,
+//            FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+//        )
+//            .setAutoCancelDuration(3, TimeUnit.SECONDS)
+//            .build()
+//
+//        cam.cameraControl.startFocusAndMetering(action)
+//    }
+//
+//    fun stopCamera() {
+//        cameraProvider?.unbindAll()
+//        camera = null
+//        imageCapture = null
+//        videoCapture = null
+//    }
+//}

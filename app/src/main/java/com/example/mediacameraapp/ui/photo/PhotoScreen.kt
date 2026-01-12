@@ -11,7 +11,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
@@ -20,11 +23,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.graphics.graphicsLayer
 import com.example.mediacameraapp.camera.CameraManager
 import com.example.mediacameraapp.navigation.CameraBottomBar
 import com.example.mediacameraapp.navigation.CameraMode
@@ -40,15 +45,16 @@ fun PhotoScreen(
     onOpenGallery: () -> Unit
 ) {
 
+//    LockOrientationPortrait()
+
     val coroutineScope = rememberCoroutineScope()
     var showFlash by remember { mutableStateOf(false) }
 
     var cameraSelector by remember { mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA) }
 
-//    val context = LocalContext.current
-//    val lifecycleOwner = LocalLifecycleOwner.current
-
     var hasPermissions by remember { mutableStateOf(false) }
+
+    var focusPoint by remember { mutableStateOf<Offset?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -113,6 +119,14 @@ fun PhotoScreen(
                             object : GestureDetector.SimpleOnGestureListener() {
                                 override fun onSingleTapUp(e: MotionEvent): Boolean {
                                     cameraManager.focusOnPoint(previewView, e.x, e.y)
+
+                                    // Показываем анимацию фокуса
+                                    focusPoint = Offset(e.x, e.y)
+                                    coroutineScope.launch {
+                                        delay(800)
+                                        focusPoint = null
+                                    }
+
                                     return true
                                 }
                             })
@@ -125,14 +139,20 @@ fun PhotoScreen(
 
                         previewView
                     },
-                    modifier = Modifier
-                        .fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     update = { previewView ->
                         cameraManager.startPhotoCamera(
                             previewView = previewView,
                             cameraSelector = cameraSelector
                         )
                     }
+                )
+            }
+
+            focusPoint?.let { point ->
+                FocusIndicator(
+                    x = point.x,
+                    y = point.y
                 )
             }
 
@@ -197,7 +217,6 @@ fun PhotoScreen(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-
             }
 
             if (showFlash) {
@@ -209,4 +228,41 @@ fun PhotoScreen(
             }
         }
     }
+}
+
+@Composable
+fun FocusIndicator(
+    x: Float,
+    y: Float
+) {
+    val density = LocalDensity.current
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(250)
+    )
+    val alpha by animateFloatAsState(
+        targetValue = 0f,
+        animationSpec = tween(800)
+    )
+
+    Box(
+        modifier = Modifier
+            .offset {
+                IntOffset(
+                    (x - with(density) { 40.dp.toPx() }).toInt(),
+                    (y - with(density) { 40.dp.toPx() }).toInt()
+                )
+            }
+            .size(80.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = 1f - alpha
+            }
+            .border(
+                width = 2.dp,
+                color = Color.Yellow,
+                shape = MaterialTheme.shapes.small
+            )
+    )
 }
