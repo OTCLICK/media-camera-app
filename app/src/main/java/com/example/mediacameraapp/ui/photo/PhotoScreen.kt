@@ -83,6 +83,7 @@ fun PhotoScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             CameraBottomBar(
                 currentMode = CameraMode.PHOTO,
@@ -93,10 +94,9 @@ fun PhotoScreen(
         }) { padding ->
 
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+            modifier = Modifier.fillMaxSize()
+        )
+        {
 
             if (hasPermissions) {
                 AndroidView(
@@ -166,7 +166,7 @@ fun PhotoScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(32.dp)
                     .background(
                         color = Color.Black.copy(alpha = 0.6f),
                         shape = MaterialTheme.shapes.medium
